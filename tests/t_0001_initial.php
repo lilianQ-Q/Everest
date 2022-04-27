@@ -1,5 +1,5 @@
 <?php
-namespace Tests;
+namespace EverestTests;
 use Everest\core\entities\TestCase;
 
 class t_0001_initial extends TestCase
@@ -28,7 +28,7 @@ class t_0001_initial extends TestCase
 
 	public function TestArraySubsetPass()
 	{
-		return ($this->assertArraySubset(['test' => [1, 2]], ['test' => [1, 2, 3]]));
+		return ($this->assertArraySubset(['test' => [1, 2]], ['test' => [1, 2, 3]], "pute"));
 	}
 
 	public function TestArraySubsetFail()

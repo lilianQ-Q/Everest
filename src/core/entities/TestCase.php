@@ -50,7 +50,7 @@ abstract class TestCase
 					foreach($value as $vvalue)
 					{
 						if (!in_array($vvalue, $haystack[$key]))
-							return (TestResult::fail());
+							return (TestResult::fail("ewew"));
 					}
 				}
 				else

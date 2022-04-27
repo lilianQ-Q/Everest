@@ -1,2 +1,2 @@
 test:
-	@php bin/app.php
+	@php bin/launcher.php

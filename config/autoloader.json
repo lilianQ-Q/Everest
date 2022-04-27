@@ -1,4 +1,6 @@
 {
 	"Everest\\" : "src/",
-	"Tests\\" : "tests/"
+	"EverestTests\\" : "tests/",
+	"EverestTests2\\" : "test2/"
+
 }

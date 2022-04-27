@@ -1,6 +1,6 @@
 <?php
 
-use Tests\t_0001_initial;
+use EverestTests\t_0001_initial;
 
 require_once(__DIR__ . '/../src/libs/autoloader.php');
 
