@@ -130,7 +130,7 @@ class Tester
 			 */
 			foreach ($tmp as $testName => $testResult)
 			{
-				echo "\t$testName " . ($testResult->isOk() ? "OK" : "NON") . "\n";
+				echo "\t$testName\t" . ($testResult->isOk() ? "✓" : "✗") . "\n";
 			}
 			echo "\n(tests $testsCount)\n\n";
 		}
