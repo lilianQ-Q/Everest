@@ -17,12 +17,19 @@ class Tester
 
 	private int $testCount = 0;
 
+	private bool $allTestsPassed = true;
 
 	private function __construct()
 	{
 		$this->printer = new Printer();
 	}
 
+	/**
+	 * Returns the singleton of the class
+	 * 
+	 * @param void
+	 * @return Tester
+	 */
 	public static function instance() : Tester
 	{
 		if (is_null(static::$instance))
@@ -30,11 +37,23 @@ class Tester
 		return (static::$instance);
 	}
 
+	/**
+	 * Increments the assertions counter
+	 * 
+	 * @param void
+	 * @return void
+	 */
 	public function addAssertion() : void
 	{
 		$this->assertionCount++;
 	}
 
+	/**
+	 * Increments the tests counter
+	 * 
+	 * @param void
+	 * @return void
+	 */
 	public function addTest() : void
 	{
 		$this->testCount++;
@@ -45,13 +64,20 @@ class Tester
 	 * 
 	 * @param string $namespace
 	 * @param string $path
+	 * @return Tester
 	 */
-	public function directory(string $namespace, string $path)
+	public function directory(string $namespace, string $path) : self
 	{
 		$this->testDirectories[$namespace] = realpath($path);
 		return ($this);
 	}
 
+	/**
+	 * Returns the path of all test files from given directories
+	 * 
+	 * @param void
+	 * @return array
+	 */
 	private function getTestsFiles() : array
 	{
 		$files = [];
@@ -66,6 +92,14 @@ class Tester
 		return ($files);
 	}
 
+	/**
+	 * Execute and returns status for all tested methods
+	 * from a given class
+	 * 
+	 * @param string $namespace is the namespace of the given class
+	 * @param string $filePath is the path to the class
+	 * @return array
+	 */
 	private function executeTests(string $namespace, string $filePath) : array
 	{
 		//TODO: Improve to handle multiple directory in one directory
@@ -97,6 +131,12 @@ class Tester
 		return ($methodsStatus);
 	}
 
+	/**
+	 * Starts all the tests from all the given directories and files
+	 * 
+	 * @param void
+	 * @return void
+	 */
 	public function run() : void
 	{
 		$testsFiles = $this->getTestsFiles();
@@ -107,13 +147,14 @@ class Tester
 			{
 				$testsStatus = $this->executeTests($namespace, $file);
 			}
-
-			$this->printer->print("");
 			
 			if(in_array(false, array_values($testsStatus)))
-				$this->printer->redBanner("FAIL");
+			{
+				$this->printer->print("")->redBanner("FAIL");
+				$this->allTestsPassed = false;
+			}
 			else
-				$this->printer->greenBanner("PASS");
+				$this->printer->print("")->greenBanner("PASS");
 
 			$this->printer->print(" $namespace : " . realpath($this->testDirectories[$namespace]));
 			foreach ($testsStatus as $name => $value)
@@ -122,9 +163,17 @@ class Tester
 					->print($value ? "\e[1;30m$name\e[0m" : "\e[0;31m$name\e[0m");
 			}
 		}
-		$this->printer->print("")
+
+		if ($this->allTestsPassed)
+			$this->printer
+						->print("")
 						->greenBanner("[OK]")
-						->print(" (" . $this->testCount .  " tests, " . $this->assertionCount . " assertions)");
+						->print(" (" . $this->testCount .  " tests, " . $this->assertionCount . " assertions)")->print("");
+		else
+			$this->printer
+					->print("")
+					->redBanner("[KO]")
+					->print(" (" . $this->testCount .  " tests, " . $this->assertionCount . " assertions)")->print("");
 	}
 
 }
