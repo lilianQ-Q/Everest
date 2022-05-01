@@ -164,16 +164,9 @@ class Tester
 			}
 		}
 
-		if ($this->allTestsPassed)
-			$this->printer
-						->print("")
-						->greenBanner("[OK]")
-						->print(" (" . $this->testCount .  " tests, " . $this->assertionCount . " assertions)")->print("");
-		else
-			$this->printer
-					->print("")
-					->redBanner("[KO]")
-					->print(" (" . $this->testCount .  " tests, " . $this->assertionCount . " assertions)")->print("");
+		$this->printer->print("");
+		$this->allTestsPassed ? $this->printer->greenBanner("[OK]") : $this->printer->redBanner("[KO]");
+		$this->printer->print(" (" . $this->testCount .  " tests, " . $this->assertionCount . " assertions)")->print("");
 	}
 
 }
