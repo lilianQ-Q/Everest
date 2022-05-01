@@ -136,26 +136,18 @@ class t_0001_initial extends TestCase
 
 	public function TestAssertEmpty()
 	{
-		$array = [];
-		$string = '';
-		$int = 0;
-		$null = null;
-		$this->assertEmpty($array);
-		$this->assertEmpty($string);
-		$this->assertEmpty($int);
-		$this->assertEmpty($null);
+		$this->assertEmpty([]);
+		$this->assertEmpty('');
+		$this->assertEmpty(0);
+		$this->assertEmpty(null);
 	}
 
 	public function TestAssertNotEmpty()
 	{
-		$array = ['ezez'];
-		$string = 'ezez';
-		$int = 1;
-		$null = true;
-		$this->assertNotEmpty($array);
-		$this->assertNotEmpty($string);
-		$this->assertNotEmpty($int);
-		$this->assertNotEmpty($null);
+		$this->assertNotEmpty(['zeezz']);
+		$this->assertNotEmpty('zeze');
+		$this->assertNotEmpty(42);
+		$this->assertNotEmpty(true);
 	}
 
 	public function TestAssertEquals()
