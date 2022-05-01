@@ -1,7 +1,9 @@
 <?php
 namespace Everest;
 
-use Everest\core\entities\TestResult;
+use Everest\core\exception\TestFailException;
+use Everest\libs\Printer;
+use ReflectionClass;
 
 class Tester
 {
@@ -9,14 +11,25 @@ class Tester
 
 	protected array $testDirectories = [];
 
-	private array $tests = [];
-
-	public array $testPassed = [];
-
-	public array $testFailed = [];
-
 	private bool $stopOnFailure = false;
 
+	private int $assertionCount = 0;
+
+	private int $testCount = 0;
+
+	private bool $allTestsPassed = true;
+
+	private function __construct()
+	{
+		$this->printer = new Printer();
+	}
+
+	/**
+	 * Returns the singleton of the class
+	 * 
+	 * @param void
+	 * @return Tester
+	 */
 	public static function instance() : Tester
 	{
 		if (is_null(static::$instance))
@@ -25,116 +38,137 @@ class Tester
 	}
 
 	/**
+	 * Increments the assertions counter
+	 * 
+	 * @param void
+	 * @return void
+	 */
+	public function addAssertion() : void
+	{
+		$this->assertionCount++;
+	}
+
+	/**
+	 * Increments the tests counter
+	 * 
+	 * @param void
+	 * @return void
+	 */
+	public function addTest() : void
+	{
+		$this->testCount++;
+	}
+
+	/**
 	 * Adds a new directory to test
 	 * 
 	 * @param string $namespace
 	 * @param string $path
+	 * @return Tester
 	 */
-	public function directory(string $namespace, string $path)
+	public function directory(string $namespace, string $path) : self
 	{
-		$this->testDirectories[$namespace] = $path;
+		$this->testDirectories[$namespace] = realpath($path);
 		return ($this);
 	}
 
 	/**
-	 * Returns all scanned test files in directories array
+	 * Returns the path of all test files from given directories
 	 * 
 	 * @param void
 	 * @return array
 	 */
-	private function scanDir()
+	private function getTestsFiles() : array
 	{
-		$tmp = [];
-		foreach ($this->testDirectories as $namespace => $folder)
+		$files = [];
+		foreach ($this->testDirectories as $directory)
 		{
-			$tmp[$namespace] = array_map(function(string $element) use ($namespace)
-					{
-						return ("$namespace\\" . basename($element));
-					}, glob("$folder/t_*.php"));
+			$directory = realpath($directory);
+			$namespace = array_keys($this->testDirectories, $directory)[0];
+			$files[$namespace] = array_map(function ($element){
+				return (substr($element, 0, -4));
+			}, glob($directory . "/t_*.php"));
 		}
-		return ($tmp); 
+		return ($files);
 	}
 
-	public function runTestClass(string $classname) : array
+	/**
+	 * Execute and returns status for all tested methods
+	 * from a given class
+	 * 
+	 * @param string $namespace is the namespace of the given class
+	 * @param string $filePath is the path to the class
+	 * @return array
+	 */
+	private function executeTests(string $namespace, string $filePath) : array
 	{
-		$testResults = [];
-		$namespace = explode("\\", $classname)[0];
-		/**
-		 * @var \Everest\core\entities\TestCase $instance
-		 */
-		$instance = new $classname();
-		$rc = new \ReflectionClass($instance);
+		//TODO: Improve to handle multiple directory in one directory
+		if (!array_key_exists($namespace, $this->testDirectories))
+			throw new TestFailException("Namespace $namespace not defined when instantiate the tester");
+		$class = explode('/', $filePath);
+		$class = $class[count($class) - 1];
+		$class = "$namespace\\$class";
+		$methodsStatus = [];
+		$rc = new ReflectionClass($class);
 		foreach ($rc->getMethods() as $method)
 		{
-			if (strpos($method->name, "Test") === 0 && $method->isPublic())
-				$testResults[$namespace][$method->name] = $method->invoke($instance);
-		}
-		return ($testResults);
-	}
-
-	private function sortResults(array $testResults) : void
-	{
-		foreach ($testResults as $namespace => $className)
-		{
-			/**
-			 * @var \Everest\core\entities\TestResult $testResult
-			 */
-			foreach ($className as $testName => $testResult)
+			if (strpos($method->getName(), "Test") === 0)
 			{
-				if ($testResult->isOk())
-					$this->testPassed[$namespace][$testName] = $testResult;
-				else
-					$this->testFailed[$namespace][$testName] = $testResult;
+				try
+				{
+					$method->invoke($rc->newInstance());
+					$methodsStatus[$method->getName()] = true;
+				}
+				catch (\Exception $exception)
+				{
+					$methodsStatus[$method->getName()] = false;						
+					if ($this->stopOnFailure)
+						return ($methodsStatus);
+				}
+				$this->testCount++;
 			}
 		}
+		return ($methodsStatus);
 	}
 
+	/**
+	 * Starts all the tests from all the given directories and files
+	 * 
+	 * @param void
+	 * @return void
+	 */
 	public function run() : void
 	{
-		$files = $this->scanDir();
-		foreach ($files as $namespace => $files)
+		$testsFiles = $this->getTestsFiles();
+		$testsStatus = [];
+		foreach ($testsFiles as $namespace => $files)
 		{
 			foreach ($files as $file)
 			{
-				$file = substr($file, 0, -4);
-				$this->tests = $this->runTestClass($file);
-				$this->sortResults($this->tests);
+				$testsStatus = $this->executeTests($namespace, $file);
+			}
+			
+			if(in_array(false, array_values($testsStatus)))
+			{
+				$this->printer->print("")->redBanner("FAIL");
+				$this->allTestsPassed = false;
+			}
+			else
+				$this->printer->print("")->greenBanner("PASS");
+
+			$this->printer->print(" $namespace : " . realpath($this->testDirectories[$namespace]));
+			foreach ($testsStatus as $name => $value)
+			{
+				$this->printer->output($value ? "✓ " : "✗ ")
+					->print($value ? "\e[1;30m$name\e[0m" : "\e[0;31m$name\e[0m");
 			}
 		}
-		$this->printResults();
+
+		$this->printer->print("");
+		$this->allTestsPassed ? $this->printer->greenBanner("[OK]") : $this->printer->redBanner("[KO]");
+		$this->printer->print(" (" . $this->testCount .  " tests, " . $this->assertionCount . " assertions)")->print("");
 	}
 
-	private function getTestsNamespaces() : array
-	{
-		return (array_keys($this->testDirectories));
-	}
-
-	public function printResults()
-	{
-		foreach ($this->getTestsNamespaces() as $namespace)
-		{
-			$tmp = [];
-			$testsCount = count($this->testPassed[$namespace]) + count($this->testFailed[$namespace]);
-
-			echo "$namespace : " . realpath($this->testDirectories[$namespace]) . "\n";
-			foreach ($this->testPassed[$namespace] as $testName => $testResult)
-			{
-				$tmp[$testName] = $testResult;
-			}
-			foreach ($this->testFailed[$namespace] as $testName => $testResult)
-			{
-				$tmp[$testName] = $testResult;
-			}
-			/**
-			 * @var \Everest\core\entities\TestResult $testResult
-			 */
-			foreach ($tmp as $testName => $testResult)
-			{
-				echo "\t$testName\t" . ($testResult->isOk() ? "✓" : "✗") . "\n";
-			}
-			echo "\n(tests $testsCount)\n\n";
-		}
-	}
 }
 
 ?>
